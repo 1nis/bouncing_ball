@@ -37,7 +37,7 @@ function preload() {
 }
 
 function setup() {
-  createCanvas(600, 600);
+  createCanvas(540, 960);
   pos = createVector(width / 2 + 30, height / 2 - 30);
   vel = createVector(2, -1);
   acc = createVector(0, 0.2);
@@ -47,7 +47,7 @@ function setup() {
 
   // Ajouter un bouton pour lancer la simulation
   let startButton = createButton("Lancer la simulation");
-  startButton.position(width / 2 - 70, height / 2);
+  startButton.position(width * 1.65, height / 2);
   startButton.mousePressed(() => {
     // Démarrer la simulation après un clic
     if (musicLoaded) {
@@ -168,10 +168,10 @@ function draw() {
         ballRadius += growthFactor;
         lastGrowthTime = currentTime;
       }
-    }
+    } 
 
     // Lancer le GIF et la musique
-    gif.position(width / 2 - gifWidth / 2, height / 2 - gifHeight / 2);
+    gif.position(width * 1.77 - gifWidth / 2, height / 2 - gifHeight / 2);
     gif.show();
     gifPlaying = true;
     if (!music.isPlaying()) {

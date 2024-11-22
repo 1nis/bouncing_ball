@@ -1,6 +1,8 @@
 html, body {
     margin: 0;
     padding: 0;
+    display: flex;
+    justify-content: center;
   }
   canvas {
     display: block;
@@ -8,4 +10,8 @@ html, body {
     color: aqua;
     background-color: aqua;
   }
-  
+
+  .simulation {
+    display: flex;
+    justify-content: center;
+  }
