@@ -22,6 +22,7 @@ let explosions = [];
 let music; // Son pour accompagner le GIF
 let musicLoaded = false; // Indique si la musique est chargée
 let simulationStarted = false; // Indique si la simulation a commencé
+let volumeGain = 0.5;
 
 function preload() {
   // Charger le GIF et l'image statique
@@ -175,6 +176,7 @@ function draw() {
     gifPlaying = true;
     if (!music.isPlaying()) {
       music.loop();
+      music.setVolume(volumeGain); // Applique le gain du volume au moment de la lecture
     }
 
     lastBounceTime = millis();
@@ -234,3 +236,17 @@ class Particle {
     return this.lifetime <= 0;
   }
 }
+
+function constrain(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function setVolume(newVolume) {
+  volumeGain = constrain(newVolume, 0, 1); // Assure que le volume reste entre 0 et 1
+  if (music) {
+    music.setVolume(volumeGain);
+  }
+  console.log(`Volume réglé à : ${volumeGain}`);
+}
+
+setVolume(0.05);
