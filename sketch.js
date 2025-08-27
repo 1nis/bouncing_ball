@@ -45,29 +45,30 @@ function setup() {
   lastCircleColor = circleColor;
   gif.size(gifWidth, gifHeight);
 
-  // Ajouter un bouton pour lancer la simulation
-  let startButton = createButton("Lancer la simulation");
-  startButton.position(width * 1.65, height / 2);
+  // Récupérer les éléments de l'interface
+  let startButton = select('#startButton');
+  let volumeSlider = select('#volumeSlider');
+
   startButton.mousePressed(() => {
-    // Démarrer la simulation après un clic
     if (musicLoaded) {
       simulationStarted = true;
+      select('#overlay').hide();
     } else {
       console.log("La musique n'est pas encore chargée.");
     }
-    startButton.remove(); // Retirer le bouton après le clic
   });
+
+  volumeSlider.input(() => {
+    setVolume(volumeSlider.value());
+  });
+
+  // Définir le volume initial
+  setVolume(volumeSlider.value());
 }
 
 function draw() {
   if (!simulationStarted) {
-    // Afficher un message tant que la simulation n'a pas commencé
-    background(50);
-    textAlign(CENTER, CENTER);
-    fill(255);
-    textSize(20);
-    text("Cliquez sur 'Lancer la simulation' pour commencer.", width / 2, height / 2 - 20);
-    return; // Sortir de la fonction draw
+    return;
   }
 
   background(25, 22, 171);
@@ -248,5 +249,3 @@ function setVolume(newVolume) {
   }
   console.log(`Volume réglé à : ${volumeGain}`);
 }
-
-setVolume(0.05);

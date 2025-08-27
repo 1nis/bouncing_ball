@@ -15,11 +15,21 @@
 </head>
 
   <body>
-    <main class="simulation">
-    <script src="sketch.js"></script>
-  </main>
-  <!-- Charger le script principal -->
+    <div id="overlay" class="overlay">
+      <h1>Bouncing Ball Simulation</h1>
+      <p>Appuyez sur le bouton pour commencer.</p>
+      <button id="startButton">Lancer la simulation</button>
+      <div class="volume-control">
+        <label for="volumeSlider">Volume</label>
+        <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="0.5" />
+      </div>
+    </div>
 
-</body>
+    <main class="simulation">
+      <script src="sketch.js"></script>
+    </main>
+    <!-- Charger le script principal -->
+
+  </body>
 
 </html>
