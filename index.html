@@ -1,35 +1,37 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 
 <head>
   <meta charset="utf-8" />
-  <title>Bouncing Ball Simulation</title>
-  <!-- Charger p5.js -->
+  <title>Bouncing Ball HD Final</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.1/p5.js"></script>
-  <!-- Charger p5.sound -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.1/addons/p5.sound.min.js"></script>
-  <!-- Charger p5.gif.js -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.gif.js/0.2.3/p5.gif.min.js"></script>
-  <!-- Charger les styles -->
   <link rel="stylesheet" type="text/css" href="style.css">
 </head>
 
-  <body>
-    <div id="overlay" class="overlay">
-      <h1>Bouncing Ball Simulation</h1>
-      <p>Appuyez sur le bouton pour commencer.</p>
-      <button id="startButton">Lancer la simulation</button>
-      <div class="volume-control">
-        <label for="volumeSlider">Volume</label>
-        <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="0.5" />
+<body>
+  <div id="overlay" class="overlay">
+    <div class="card">
+      <h1>Configuration</h1>
+      <div class="input-group">
+        <label class="file-label">1. GIF <input type="file" id="gifInput" accept="image/gif" /></label>
+        <span id="gifStatus" class="status">En attente...</span>
       </div>
+      <div class="input-group">
+        <label class="file-label">2. MP3 <input type="file" id="audioInput" accept="audio/*" /></label>
+        <span id="audioStatus" class="status">En attente...</span>
+      </div>
+      <hr>
+      <div class="controls-row">
+        <div class="vol-box"><label>Volume</label><input type="range" id="volumeSlider" min="0" max="1" step="0.01"
+            value="0.5" /></div>
+        <button id="startButton" disabled>Lancer</button>
+      </div>
+      <button id="recordButton" class="rec-btn">⏺ Enregistrer Vidéo</button>
     </div>
-
-    <main class="simulation">
-      <script src="sketch.js"></script>
-    </main>
-    <!-- Charger le script principal -->
-
-  </body>
+  </div>
+  <main class="simulation"></main>
+  <script src="sketch.js"></script>
+</body>
 
 </html>
