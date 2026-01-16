@@ -20,10 +20,11 @@ let circleColor, lastCircleColor;
 
 // Variables Média
 let uploadedGifAnim = null;   // Le GIF animé
-let uploadedGifStatic = null; // L'image fixe (Frame 0)
+let uploadedGifStatic = null; // L'image fixe (Frame 3)
 let uploadedMusic = null;
 let isGifLoaded = false;
 let isMusicLoaded = false;
+let gifFrameCanvas = null;    // Canvas pour capturer la 3ème frame
 
 // Variables État du Jeu
 let simulationStarted = false;
@@ -105,13 +106,16 @@ function draw() {
     if (!gifDrawHeight) gifDrawHeight = 200 * SCALE;
 
     if (isActive && uploadedGifAnim) {
-      // Affiche le GIF qui bouge
+      // ACTIF : Affiche le GIF animé qui bouge
+      // On doit montrer l'élément DOM pour que l'animation continue
+      uploadedGifAnim.show();
       image(uploadedGifAnim, cx, cy, gifDrawWidth, gifDrawHeight);
     } else {
-      // Affiche l'image fixe
-      // Fallback de sécurité : si l'image fixe n'est pas chargée, on met le GIF quand même pour ne pas avoir d'écran vide
-      let imgDesktop = (uploadedGifStatic && uploadedGifStatic.width > 0) ? uploadedGifStatic : uploadedGifAnim;
-      image(imgDesktop, cx, cy, gifDrawWidth, gifDrawHeight);
+      // INACTIF (> 500ms) : Affiche l'image fixe (3ème frame)
+      if (uploadedGifAnim) uploadedGifAnim.hide();
+      // Fallback de sécurité : si l'image fixe n'est pas chargée, on utilise le GIF
+      let imgToShow = (uploadedGifStatic && uploadedGifStatic.width > 0) ? uploadedGifStatic : uploadedGifAnim;
+      if (imgToShow) image(imgToShow, cx, cy, gifDrawWidth, gifDrawHeight);
     }
   }
 }
@@ -255,27 +259,47 @@ function setupUI(cnv) {
 
       if (uploadedGifAnim) uploadedGifAnim.remove();
 
-      // 1. Animation (DOM)
+      // 1. Animation (DOM) - Masqué mais utilisé pour dessiner
       uploadedGifAnim = createImg(url, '');
       uploadedGifAnim.addClass('source-media');
+      uploadedGifAnim.hide(); // Masquer l'élément DOM, on dessine sur le canvas
 
-      // 2. Statique (P5 Image)
-      uploadedGifStatic = loadImage(url, (img) => {
-        isGifLoaded = true;
-        let ratio = (img.width > 0 && img.height > 0) ? img.width / img.height : 1;
+      // 2. Capturer la 3ème frame du GIF
+      let tempImg = document.createElement('img');
+      tempImg.src = url;
+      tempImg.onload = function () {
+        // Calculer les dimensions
+        let ratio = (tempImg.width > 0 && tempImg.height > 0) ? tempImg.width / tempImg.height : 1;
         gifDrawWidth = 350 * SCALE;
         gifDrawHeight = gifDrawWidth / ratio;
-        select('#gifStatus').html('✅ ' + f.name).addClass('ready');
-        checkReady();
-      }, (err) => {
-        // En cas d'erreur de chargement de l'image fixe, on active quand même le GIF
+
+        // Créer un canvas pour capturer la 3ème frame
+        gifFrameCanvas = document.createElement('canvas');
+        gifFrameCanvas.width = tempImg.width;
+        gifFrameCanvas.height = tempImg.height;
+        let ctx = gifFrameCanvas.getContext('2d');
+
+        // Attendre un peu pour que le GIF avance à la 3ème frame (~100ms par frame)
+        setTimeout(() => {
+          ctx.drawImage(tempImg, 0, 0);
+          // Convertir en p5 Image
+          uploadedGifStatic = createImage(gifFrameCanvas.width, gifFrameCanvas.height);
+          uploadedGifStatic.drawingContext.drawImage(gifFrameCanvas, 0, 0);
+
+          isGifLoaded = true;
+          select('#gifStatus').html('✅ ' + f.name).addClass('ready');
+          checkReady();
+        }, 300); // ~3 frames à ~100ms chacune
+      };
+
+      tempImg.onerror = function () {
         isGifLoaded = true;
         gifDrawWidth = 350 * SCALE;
         gifDrawHeight = 350 * SCALE;
         console.warn("Image statique non chargée, utilisation anim uniquement");
         select('#gifStatus').html('⚠ Anim Seule').addClass('ready');
         checkReady();
-      });
+      };
     }
   };
 
