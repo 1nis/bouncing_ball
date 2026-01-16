@@ -19,17 +19,16 @@ let shrinking = false;
 let circleColor, lastCircleColor;
 
 // Variables Média
-let uploadedGifAnim = null;   // Le GIF animé
-let uploadedGifStatic = null; // L'image fixe (Frame 3)
+let uploadedGifAnim = null;   // Élément DOM du GIF
+let uploadedGifStatic = null; // Buffer graphique (p5.Graphics) pour l'image fixe
 let uploadedMusic = null;
 let isGifLoaded = false;
 let isMusicLoaded = false;
-let gifFrameCanvas = null;
 
 // Variables État du Jeu
 let simulationStarted = false;
 let lastBounceTime = -99999;
-const effectDuration = 500;  // LE SEUIL 500ms
+const effectDuration = 500;
 let volumeGain = 0.5;
 
 // Variables Affichage
@@ -41,7 +40,7 @@ let recorder, chunks = [], isRecording = false;
 
 function setup() {
   let cnv = createCanvas(1080, 1920);
-  imageMode(CENTER); // Important pour centrer parfaitement
+  imageMode(CENTER); // Centre les images pour éviter les décalages
 
   pos = createVector(width / 2 + (30 * SCALE), height / 2 - (30 * SCALE));
   vel = createVector(2 * SCALE, -1 * SCALE);
@@ -61,7 +60,6 @@ function draw() {
 
   updatePhysics();
 
-  // DESSINS
   drawRipples();
   drawMainCircle();
   drawBall();
@@ -74,13 +72,13 @@ function draw() {
   // GESTION MUSIQUE
   if (uploadedMusic && isMusicLoaded) {
     if (isActive) {
-      // Si actif et pas en lecture, on lance (Sustain)
+      // ACTIF (Sustain) : On joue en boucle si ce n'est pas déjà le cas
       if (!uploadedMusic.isPlaying()) {
         uploadedMusic.loop();
         uploadedMusic.setVolume(volumeGain);
       }
     } else {
-      // Si inactif (>500ms), on PAUSE
+      // INACTIF (Pause) : On met en pause (garde la position de lecture)
       if (uploadedMusic.isPlaying()) {
         uploadedMusic.pause();
       }
@@ -88,22 +86,34 @@ function draw() {
   }
 
   // GESTION AFFICHAGE GIF
-  if (isGifLoaded) {
+  if (isGifLoaded && uploadedGifAnim) {
     let cx = width / 2;
     let cy = height / 2;
 
+    // Sécurité dimensions
     if (!gifDrawWidth) gifDrawWidth = 200 * SCALE;
     if (!gifDrawHeight) gifDrawHeight = 200 * SCALE;
 
-    if (isActive && uploadedGifAnim) {
-      // MODE ACTIF : On dessine le GIF animé
-      // Note : On n'utilise plus .show() ici car le CSS s'en charge
-      image(uploadedGifAnim, cx, cy, gifDrawWidth, gifDrawHeight);
+    // Calculer la taille réelle du GIF en fonction du scaling du canvas
+    let canvasElement = document.querySelector('canvas');
+    let canvasRect = canvasElement.getBoundingClientRect();
+    let scaleRatio = canvasRect.height / height;
+    let realGifWidth = gifDrawWidth * scaleRatio;
+    let realGifHeight = gifDrawHeight * scaleRatio;
+
+    // Appliquer les dimensions au GIF DOM
+    uploadedGifAnim.style('width', realGifWidth + 'px');
+    uploadedGifAnim.style('height', realGifHeight + 'px');
+
+    if (isActive) {
+      // MODE ACTIF : Afficher le GIF DOM animé (visible directement)
+      uploadedGifAnim.removeClass('hidden');
     } else {
-      // MODE INACTIF : On dessine l'image fixe
-      // Fallback : si l'image fixe n'existe pas, on met le GIF (mieux que rien)
-      let imgToShow = (uploadedGifStatic && uploadedGifStatic.width > 0) ? uploadedGifStatic : uploadedGifAnim;
-      if (imgToShow) image(imgToShow, cx, cy, gifDrawWidth, gifDrawHeight);
+      // MODE INACTIF : Cacher le GIF DOM et dessiner l'image statique sur le canvas
+      uploadedGifAnim.addClass('hidden');
+      if (uploadedGifStatic) {
+        image(uploadedGifStatic, cx, cy, gifDrawWidth, gifDrawHeight);
+      }
     }
   }
 }
@@ -170,20 +180,18 @@ function handleBounce(minEnergy, growthFactor) {
   // --- LOGIQUE DE RESET ---
   let timeSinceLastBounce = millis() - lastBounceTime;
 
-  // Si le temps de pause a dépassé 500ms, c'est un nouveau départ
+  // Si on vient d'une PAUSE longue (>500ms), c'est un NOUVEAU DÉPART.
   if (timeSinceLastBounce > effectDuration) {
-    // On remet la musique au début
+    // 1. Reset Musique (Stop remet le curseur à 0:00)
     if (uploadedMusic && isMusicLoaded) {
       uploadedMusic.stop();
     }
-    // On remet le GIF au début (astuce du src)
+    // 2. Reset GIF (Rechargement de la source pour revenir à la frame 0)
     if (uploadedGifAnim) {
       uploadedGifAnim.elt.src = uploadedGifAnim.elt.src;
     }
   }
-
-  // Si c'est un rebond rapide (<500ms), on ne fait rien de spécial,
-  // la musique continue (Sustain).
+  // Sinon (rebonds rapides), on ne fait rien : le flux continue.
 
   lastBounceTime = millis();
 }
@@ -233,42 +241,39 @@ function setupUI(cnv) {
 
       if (uploadedGifAnim) uploadedGifAnim.remove();
 
-      // 1. Animation (DOM) - Géré par CSS pour l'invisibilité visuelle
+      // 1. Création de l'animation (DOM)
       uploadedGifAnim = createImg(url, '');
       uploadedGifAnim.addClass('source-media');
-      // On NE FAIT PLUS .hide() ici, le CSS s'en charge mieux
+      uploadedGifAnim.addClass('hidden'); // Caché jusqu'au premier rebond
 
-      // 2. Capture de la frame 3
-      let tempImg = document.createElement('img');
+      // 2. Création de l'image statique (Capture propre)
+      // On utilise un élément Image natif pour lire les dimensions
+      let tempImg = new Image();
       tempImg.src = url;
       tempImg.onload = function () {
+        // Calcul taille
         let ratio = (tempImg.width > 0 && tempImg.height > 0) ? tempImg.width / tempImg.height : 1;
         gifDrawWidth = 350 * SCALE;
         gifDrawHeight = gifDrawWidth / ratio;
 
-        gifFrameCanvas = document.createElement('canvas');
-        gifFrameCanvas.width = tempImg.width;
-        gifFrameCanvas.height = tempImg.height;
-        let ctx = gifFrameCanvas.getContext('2d');
+        // Création d'un buffer graphique p5 pour stocker l'image fixe (Frame 0)
+        uploadedGifStatic = createGraphics(tempImg.width, tempImg.height);
+        // On dessine l'image chargée dans ce buffer
+        uploadedGifStatic.drawingContext.drawImage(tempImg, 0, 0);
 
-        setTimeout(() => {
-          ctx.drawImage(tempImg, 0, 0);
-          uploadedGifStatic = createImage(gifFrameCanvas.width, gifFrameCanvas.height);
-          uploadedGifStatic.drawingContext.drawImage(gifFrameCanvas, 0, 0);
-
-          isGifLoaded = true;
-          select('#gifStatus').html('✅ ' + f.name).addClass('ready');
-          checkReady();
-        }, 300);
+        isGifLoaded = true;
+        select('#gifStatus').html('✅ ' + f.name).addClass('ready');
+        checkReady();
       };
 
       tempImg.onerror = function () {
+        // En cas d'erreur (rare), on valide quand même pour utiliser l'anim
         isGifLoaded = true;
         gifDrawWidth = 350 * SCALE;
         gifDrawHeight = 350 * SCALE;
         select('#gifStatus').html('⚠ Anim Seule').addClass('ready');
         checkReady();
-      }
+      };
     }
   };
 
