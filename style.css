@@ -19,17 +19,15 @@ canvas {
     background-color: #000;
 }
 
-/* Classe pour cacher les éléments sources (GIF/Audio) tout en les gardant actifs */
+/* CORRECTION : On déplace l'élément hors de l'écran sans changer sa taille ni utiliser display:none */
 .source-media {
     position: absolute;
-    top: 0;
-    left: 0;
+    top: -9999px;
+    left: -9999px;
     opacity: 0;
-    /* Invisible mais présent */
     pointer-events: none;
     z-index: -1;
-    width: 1px;
-    height: 1px;
+    /* IMPORTANT : Ne pas mettre width/height à 0 ou 1px, sinon p5.js dessine un point vide ! */
 }
 
 .overlay {

@@ -9,7 +9,7 @@ let radiusThreshold = 60 * SCALE;
 
 // Variables Temporelles
 let lastGrowthTime = 0;
-const growthDelay = 2000; // 2 secondes min entre chaque grossissement
+const growthDelay = 2000;
 
 // Variables Animation & Logique
 let rippleCircles = [];
@@ -24,12 +24,12 @@ let uploadedGifStatic = null; // L'image fixe (Frame 3)
 let uploadedMusic = null;
 let isGifLoaded = false;
 let isMusicLoaded = false;
-let gifFrameCanvas = null;    // Canvas pour capturer la 3ème frame
+let gifFrameCanvas = null;
 
 // Variables État du Jeu
 let simulationStarted = false;
-let lastBounceTime = -99999; // Initialisé loin dans le passé
-const effectDuration = 500;  // LE SEUIL : 500ms
+let lastBounceTime = -99999;
+const effectDuration = 500;  // LE SEUIL 500ms
 let volumeGain = 0.5;
 
 // Variables Affichage
@@ -41,13 +41,8 @@ let recorder, chunks = [], isRecording = false;
 
 function setup() {
   let cnv = createCanvas(1080, 1920);
+  imageMode(CENTER); // Important pour centrer parfaitement
 
-  // CORRECTION MAJEURE DE L'AFFICHAGE :
-  // On dessine les images par rapport à leur centre. 
-  // Cela empêche tout décalage entre le GIF et l'image fixe.
-  imageMode(CENTER);
-
-  // Physique
   pos = createVector(width / 2 + (30 * SCALE), height / 2 - (30 * SCALE));
   vel = createVector(2 * SCALE, -1 * SCALE);
   acc = createVector(0, 0.2 * SCALE);
@@ -72,60 +67,51 @@ function draw() {
   drawBall();
   drawExplosions();
 
-  // --- LOGIQUE D'ÉTAT (DANS LA BOUCLE DE JEU) ---
-
+  // --- LOGIQUE D'ÉTAT ---
   let timeSinceLastBounce = millis() - lastBounceTime;
   let isActive = (timeSinceLastBounce < effectDuration);
 
   // GESTION MUSIQUE
   if (uploadedMusic && isMusicLoaded) {
     if (isActive) {
-      // CAS 1 : ACTIF (Rebonds rapides ou récents)
-      // Si la musique ne joue pas, on la lance. 
-      // (Si elle joue déjà, on ne fait rien, elle continue fluide).
+      // Si actif et pas en lecture, on lance (Sustain)
       if (!uploadedMusic.isPlaying()) {
         uploadedMusic.loop();
         uploadedMusic.setVolume(volumeGain);
       }
     } else {
-      // CAS 2 : INACTIF (Dépassement 500ms) -> PAUSE
+      // Si inactif (>500ms), on PAUSE
       if (uploadedMusic.isPlaying()) {
         uploadedMusic.pause();
       }
     }
   }
 
-  // GESTION AFFICHAGE (VISUEL)
+  // GESTION AFFICHAGE GIF
   if (isGifLoaded) {
-    // Avec imageMode(CENTER), on place l'image pile au centre du canvas
     let cx = width / 2;
     let cy = height / 2;
 
-    // Sécurité dimensions
     if (!gifDrawWidth) gifDrawWidth = 200 * SCALE;
     if (!gifDrawHeight) gifDrawHeight = 200 * SCALE;
 
     if (isActive && uploadedGifAnim) {
-      // ACTIF : Affiche le GIF animé qui bouge
-      // On doit montrer l'élément DOM pour que l'animation continue
-      uploadedGifAnim.show();
+      // MODE ACTIF : On dessine le GIF animé
+      // Note : On n'utilise plus .show() ici car le CSS s'en charge
       image(uploadedGifAnim, cx, cy, gifDrawWidth, gifDrawHeight);
     } else {
-      // INACTIF (> 500ms) : Affiche l'image fixe (3ème frame)
-      if (uploadedGifAnim) uploadedGifAnim.hide();
-      // Fallback de sécurité : si l'image fixe n'est pas chargée, on utilise le GIF
+      // MODE INACTIF : On dessine l'image fixe
+      // Fallback : si l'image fixe n'existe pas, on met le GIF (mieux que rien)
       let imgToShow = (uploadedGifStatic && uploadedGifStatic.width > 0) ? uploadedGifStatic : uploadedGifAnim;
       if (imgToShow) image(imgToShow, cx, cy, gifDrawWidth, gifDrawHeight);
     }
   }
 }
 
-// --- PHYSIQUE ET ÉVÉNEMENTS ---
-
+// --- PHYSIQUE ---
 function updatePhysics() {
   vel.add(acc);
 
-  // Paramètres dynamiques
   let maxSpeed, minEnergy, growthFactor;
   if (ballRadius > radiusThreshold) {
     vel.mult(1.1);
@@ -141,13 +127,11 @@ function updatePhysics() {
   if (vel.mag() > maxSpeed) vel.setMag(maxSpeed);
   pos.add(vel);
 
-  // Détection Collision
   let distToCenter = dist(pos.x, pos.y, width / 2, height / 2);
   if (distToCenter + ballRadius >= circleRadius) {
     handleBounce(minEnergy, growthFactor);
   }
 
-  // Fin
   if (ballRadius >= circleRadius) {
     noLoop();
     if (uploadedMusic) uploadedMusic.stop();
@@ -157,7 +141,6 @@ function updatePhysics() {
 }
 
 function handleBounce(minEnergy, growthFactor) {
-  // 1. Rebond Physique
   let theta = atan2(pos.y - height / 2, pos.x - width / 2);
   let overlap = dist(pos.x, pos.y, width / 2, height / 2) + ballRadius - circleRadius;
   pos.sub(p5.Vector.fromAngle(theta).mult(overlap));
@@ -166,14 +149,12 @@ function handleBounce(minEnergy, growthFactor) {
 
   if (vel.mag() < minEnergy) vel.setMag(minEnergy);
 
-  // 2. Visuels
   lastCircleColor = circleColor;
   circleColor = color(255, 255, 255);
   rippleCircles.push({ x: width / 2, y: height / 2, radius: circleRadius, color: lastCircleColor });
   tempCircleRadius = circleRadius + (30 * SCALE);
   shrinking = true;
 
-  // 3. Croissance (avec délai 2s)
   let currentTime = millis();
   if (currentTime - lastGrowthTime >= growthDelay) {
     if (ballRadius < circleRadius) {
@@ -182,43 +163,36 @@ function handleBounce(minEnergy, growthFactor) {
     }
   }
 
-  // 4. Particules
   for (let i = 0; i < 15; i++) {
     explosions.push(new Particle(pos.x, pos.y));
   }
 
-  // --- 5. LOGIQUE DE RESET (VOTRE DEMANDE PRÉCISE) ---
-
+  // --- LOGIQUE DE RESET ---
   let timeSinceLastBounce = millis() - lastBounceTime;
 
-  // Règle : "Nouveau rebond après une pause : la musique et le GIF repartent de zéro"
+  // Si le temps de pause a dépassé 500ms, c'est un nouveau départ
   if (timeSinceLastBounce > effectDuration) {
-
-    // Reset Musique à 0
+    // On remet la musique au début
     if (uploadedMusic && isMusicLoaded) {
-      uploadedMusic.stop(); // Le Stop remet la lecture au début (0:00)
+      uploadedMusic.stop();
     }
-
-    // Reset GIF au début
+    // On remet le GIF au début (astuce du src)
     if (uploadedGifAnim) {
       uploadedGifAnim.elt.src = uploadedGifAnim.elt.src;
     }
   }
 
-  // Règle : "Rebonds rapides (< 500ms) : On ne coupe rien"
-  // -> Dans ce cas (else), on ne fait aucun stop(), donc la musique continue 
-  //    là où elle était et le GIF aussi.
+  // Si c'est un rebond rapide (<500ms), on ne fait rien de spécial,
+  // la musique continue (Sustain).
 
-  // On met à jour le temps du dernier rebond pour relancer le compteur d'activité
   lastBounceTime = millis();
 }
 
-// --- UTILITAIRES DESSIN ---
+// --- UTILITAIRES ---
 function drawRipples() {
   noFill(); strokeWeight(3 * SCALE);
   for (let i = rippleCircles.length - 1; i >= 0; i--) {
     stroke(rippleCircles[i].color);
-    // circle() dessine centré sur x,y
     circle(rippleCircles[i].x, rippleCircles[i].y, rippleCircles[i].radius * 2);
     rippleCircles[i].radius += (2 * SCALE);
     if (rippleCircles[i].radius > (350 * SCALE)) rippleCircles.splice(i, 1);
@@ -259,47 +233,42 @@ function setupUI(cnv) {
 
       if (uploadedGifAnim) uploadedGifAnim.remove();
 
-      // 1. Animation (DOM) - Masqué mais utilisé pour dessiner
+      // 1. Animation (DOM) - Géré par CSS pour l'invisibilité visuelle
       uploadedGifAnim = createImg(url, '');
       uploadedGifAnim.addClass('source-media');
-      uploadedGifAnim.hide(); // Masquer l'élément DOM, on dessine sur le canvas
+      // On NE FAIT PLUS .hide() ici, le CSS s'en charge mieux
 
-      // 2. Capturer la 3ème frame du GIF
+      // 2. Capture de la frame 3
       let tempImg = document.createElement('img');
       tempImg.src = url;
       tempImg.onload = function () {
-        // Calculer les dimensions
         let ratio = (tempImg.width > 0 && tempImg.height > 0) ? tempImg.width / tempImg.height : 1;
         gifDrawWidth = 350 * SCALE;
         gifDrawHeight = gifDrawWidth / ratio;
 
-        // Créer un canvas pour capturer la 3ème frame
         gifFrameCanvas = document.createElement('canvas');
         gifFrameCanvas.width = tempImg.width;
         gifFrameCanvas.height = tempImg.height;
         let ctx = gifFrameCanvas.getContext('2d');
 
-        // Attendre un peu pour que le GIF avance à la 3ème frame (~100ms par frame)
         setTimeout(() => {
           ctx.drawImage(tempImg, 0, 0);
-          // Convertir en p5 Image
           uploadedGifStatic = createImage(gifFrameCanvas.width, gifFrameCanvas.height);
           uploadedGifStatic.drawingContext.drawImage(gifFrameCanvas, 0, 0);
 
           isGifLoaded = true;
           select('#gifStatus').html('✅ ' + f.name).addClass('ready');
           checkReady();
-        }, 300); // ~3 frames à ~100ms chacune
+        }, 300);
       };
 
       tempImg.onerror = function () {
         isGifLoaded = true;
         gifDrawWidth = 350 * SCALE;
         gifDrawHeight = 350 * SCALE;
-        console.warn("Image statique non chargée, utilisation anim uniquement");
         select('#gifStatus').html('⚠ Anim Seule').addClass('ready');
         checkReady();
-      };
+      }
     }
   };
 
@@ -332,7 +301,6 @@ function checkReady() {
   if (isGifLoaded && isMusicLoaded) select('#startButton').removeAttribute('disabled');
 }
 
-// --- PARTICLES ---
 class Particle {
   constructor(x, y) {
     this.pos = createVector(x, y);
@@ -344,7 +312,6 @@ class Particle {
   isFinished() { return this.lifetime <= 0; }
 }
 
-// --- RECORDER ---
 function toggleRecording(canvas, btn) {
   if (!isRecording) {
     chunks = [];
